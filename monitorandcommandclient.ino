@@ -29,7 +29,7 @@ int internalLed = D7; // Instead of writing D7 over and over again, we'll write 
 #define RECONNECTION_DELAY 60000
 
 //https://docs.particle.io/reference/firmware/photon/#ipaddress
-uint8_t server[] = { 192, 168, 178, 22 };
+uint8_t server[] = { 192, 168, 178, 26 };
 IPAddress IPfromBytes(server);
 int portNumber = 11000;
 
@@ -71,9 +71,14 @@ void setup() {
 }
 
 bool ConnectAndRegister(){
-    if (Connect())
+    if (mcClient->Connect(IPfromBytes, portNumber))
     {
-        Register(); 
+        mcClient->Register(DeviceName); 
+        mcClient->PublishData("*", "Sensor", "Temperature");
+        mcClient->PublishData("*", "Sensor", "Humidity");
+        mcClient->PublishData("*", "BoardLED", "LEDStatus");
+        mcClient->PublishData("*", "Monitoring", "Reception"); 
+        mcClient->SubscribeToCommand("*", "ToggleLED", "BoardLED");    
         return true;  
     }
     else
@@ -81,37 +86,10 @@ bool ConnectAndRegister(){
         return false; 
     }
 }
-    
-bool Connect() {
-    Serial.println("connecting...");
-    if (mcClient->Connect(IPfromBytes, portNumber))
-    {
-        Serial.println("connected");
-        return true; 
-    }
-    else
-    {
-        Serial.println("connection failed");
-        return false; 
-    }
-}
-
-void Register() {
-    if (mcClient->IsConnected())
-    {
-        //Serial.println("registering...");
-        mcClient->Register(DeviceName); 
-        mcClient->PublishData("*", "Sensor", "Temperature");
-        mcClient->PublishData("*", "Sensor", "Humidity");
-        mcClient->PublishData("*", "ToggleLed", "BoardLed");
-        mcClient->PublishData("*", "Monitoring", "Reception"); 
-        mcClient->SubscribeToCommand("*", "ToggleLed", "BoardLed");        
-    }
-}
 
 void loop() {
     
-    delay(WAIT_MESSAGE_DELAY);
+    //delay(WAIT_MESSAGE_DELAY);
 
     //We check for Message data filling the buffer
     int result = mcClient->BufferMessageData(); 
@@ -125,27 +103,30 @@ void loop() {
         }
     }
 
-    //Periodically, we do some work
-    if (millis() - lastTime > DO_WORK_PERIOD)
+    //Periodically, we do some work (unless a message is currently received)
+    if (result == MCClient::BUFFER_NONE && millis() - lastTime > DO_WORK_PERIOD)
     {
+       //Message* heartbeatMessage = Message::InstanciateHeartbeatMessage(DeviceName);
+       //mcClient->Send(heartbeatMessage);
         DoWork(); 
         lastTime = millis();
     }
-            
+     
+    /* 
     if (!mcClient->IsConnected())
     {
         Serial.println("disconnected");
         delay(RECONNECTION_DELAY);
         ConnectAndRegister(); 
     }
+    */
 }
 
 void HandleReceivedMessage() {
     //Serial.println("handling message");
-    
     if (mcClient->IsConnected())
     {
-        mcClient->SendData("*", "Monitoring", "Reception", "message received");
+        mcClient->SendData("*", "BoardLED", "LEDStatus", "on");
         //TODO
     }
 }

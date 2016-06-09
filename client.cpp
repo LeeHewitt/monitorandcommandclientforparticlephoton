@@ -1,6 +1,5 @@
 #include "client.h"
 #include "spark_wiring_usbserial.h"
-#include "Particle.h"
 
 size_t MCClient::MESSAGE_SIZE = 512;
 
@@ -36,40 +35,46 @@ void MCClient::Disconnect() {
 }
 
 void MCClient::Register(String deviceName) {
-    
     DeviceName = deviceName; 
     messageToSend = Message::InstanciateRegisterMessage(DeviceName);
     Send(messageToSend);        
+    delete messageToSend;
 }
  
 void MCClient::Unregister(String deviceName) {
     messageToSend = Message::InstanciateUnregisterMessage(deviceName);
-    Send(messageToSend);        
+    Send(messageToSend); 
+    delete messageToSend;
 }
 
 void MCClient::PublishCommand(String toDevice, String commandTarget, String commandName) {
     messageToSend = Message::InstanciatePublishMessage(DeviceName, toDevice, commandTarget, commandName);
-    Send(messageToSend);        
+    Send(messageToSend); 
+    delete messageToSend;
 }
 
 void MCClient::PublishData(String toDevice, String dataSource, String dataName) {
     messageToSend = Message::InstanciatePublishMessage(DeviceName, toDevice, dataSource, dataName);
-    Send(messageToSend);        
+    Send(messageToSend); 
+    delete messageToSend;
 }
 
 void MCClient::SubscribeToData(String fromDevice, String dataSource, String dataName) {
     messageToSend = Message::InstanciateSubscribeMessage(DeviceName, fromDevice, DeviceName, dataSource, dataName);
     Send(messageToSend);        
+    delete messageToSend;
 }
 
 void MCClient::SubscribeToCommand(String fromDevice, String commandName, String commandTarget) {
     messageToSend = Message::InstanciateSubscribeMessage(DeviceName, fromDevice, DeviceName, commandName, commandTarget);
-    Send(messageToSend);        
+    Send(messageToSend);
+    delete messageToSend;
 }
 
 void MCClient::SendCommand(String toDevice, String commandName, String commandTarget, String commandValue) {
     messageToSend = Message::InstanciateCommandMessage(DeviceName, toDevice, commandName, commandTarget, commandValue);
-    Send(messageToSend);        
+    Send(messageToSend);
+    delete messageToSend;
 }
 
 void MCClient::SendData(String toDevice, String dataSource, String dataName, String dataValue) {
@@ -78,19 +83,21 @@ void MCClient::SendData(String toDevice, String dataSource, String dataName, Str
     delete messageToSend;
 }  
 
-
 void MCClient::Send(Message *message) {
     if (IsConnected()) {
         String jsonString = message->ToJSONString();
         String paddedJsonString = PadJsonString(jsonString); 
         client->write(paddedJsonString);
-        client->flush_buffer();
     }
 }
 
-//bool MCClient::HasMessage() {
-//    return (client->available() > MCClient::BUFFER_SIZE); //DOES NOT WORK
-//}
+bool MCClient::HasMessage() {
+    return (client->available() > 0 /*MCClient::BUFFER_SIZE*/); //DOES NOT WORK
+}
+
+int MCClient::IsAvailable() {
+    return client->available(); //DOES NOT WORK
+}
 
 //Taken from https://github.com/rickkas7/fixedlentcprcv/, thanks to rickkas7
 int MCClient::BufferMessageData() {
@@ -102,7 +109,6 @@ int MCClient::BufferMessageData() {
 	if (client->connected()) {
 		int count = client->read(&buffer[bufferOffset], MCClient::MESSAGE_SIZE - bufferOffset);
 		if (count <= 0) {
-		    Serial.printlnf("count=%d", count);
 			return (bufferOffset == 0) ? BUFFER_NONE : BUFFER_PARTIAL;
 		}
 
@@ -177,9 +183,10 @@ Message* MCClient::Read() {
     return message; 
 }
 
+
 String MCClient::PadJsonString(String jsonString) {
 
-    for (int i = strlen(jsonString); i < MCClient::MESSAGE_SIZE; i++) {
+    for (int i = strlen(jsonString); i < (int)MCClient::MESSAGE_SIZE; i++) {
         jsonString += "."; 
     }
     

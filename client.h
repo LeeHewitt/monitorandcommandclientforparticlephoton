@@ -27,12 +27,12 @@ class MCClient {
         void Log(String content);
     
     protected:
-    
-        void Send(Message* message);
         
         String PadJsonString(String jsonString); 
 
     public:
+
+        void Send(Message* message);
     
         static size_t MESSAGE_SIZE;
     
@@ -61,7 +61,8 @@ class MCClient {
         void SendCommand(String toDevice, String commandName, String commandTarget, String commandValue);
         void SendData(String toDevice, String dataSource, String dataName, String dataValue);  
 
-        //bool HasMessage();
+        bool HasMessage();
+        int IsAvailable(); 
         
         int BufferMessageData(); 
         
