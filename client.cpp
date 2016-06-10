@@ -13,7 +13,7 @@ bool MCClient::Connect(IPAddress serverIp, int portNumber) {
     
     if (client->connect(serverIp, portNumber))
     {
-        Serial.println("connected");
+        Serial.println("Connected");
         return true;
     }
     else
@@ -29,7 +29,7 @@ bool MCClient::IsConnected() {
 void MCClient::Disconnect() {
     if (client->connected())
     {
-        Serial.println("disconnecting.");
+        Serial.println("Disconnecting.");
         client->stop();
     }
 }
@@ -92,7 +92,7 @@ void MCClient::Send(Message *message) {
 }
 
 bool MCClient::HasMessage() {
-    return (client->available() > 0 /*MCClient::BUFFER_SIZE*/); //DOES NOT WORK
+    return (client->available() > (int)MCClient::MESSAGE_SIZE); //DOES NOT WORK
 }
 
 int MCClient::IsAvailable() {
@@ -116,7 +116,7 @@ int MCClient::BufferMessageData() {
 		bufferOffset += (size_t)count;
 		if (bufferOffset < MCClient::MESSAGE_SIZE) {
 			// Still not a full message
-			Serial.printlnf("partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
+			Serial.printlnf("Partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
 			return BUFFER_PARTIAL;
 		}
 
@@ -131,17 +131,16 @@ int MCClient::BufferMessageData() {
 }
 
 Message* MCClient::Read() {
+    Serial.println("Reading message");
     
     Message* message = NULL; 
-    
-    /*
-    Log("Reading message?");
 
+    /*
     if (HasMessage()) {
 
         Log ("Data available");
 
-        //unsigned char* messageChars = new unsigned char[MCClient::BUFFER_SIZE]; 
+        //unsigned char* messageChars = new unsigned char[MCClient::MESSAGE_SIZE]; 
 
         bool appendFlag = false;
         int charIndex = 0;
@@ -165,19 +164,23 @@ Message* MCClient::Read() {
             }
         }
     */
-        
-    String paddedJsonString = (char*)buffer; 
+    
+    //Fill a string object with the content of the bytes array
+    String paddedJsonString = "";
+    for (int charIndex = 0; charIndex < (int)MCClient::MESSAGE_SIZE; charIndex++)
+    {
+        paddedJsonString = paddedJsonString + (char)buffer[charIndex];     
+    }
+    Serial.println(paddedJsonString);
     
     //delete messageChars; 
     //messageChars = NULL; 
-    
-    Serial.println(paddedJsonString);
+
     int lastClosingBraceIndex = paddedJsonString.indexOf('}'); 
     String jsonString = paddedJsonString.substring(0, lastClosingBraceIndex); 
     Serial.println(jsonString); 
     
     message = new Message(jsonString);
-            
     //}
     
     return message; 

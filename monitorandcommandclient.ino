@@ -4,10 +4,28 @@
 
 #include "Adafruit_DHT/Adafruit_DHT.h"
 
+#define WAIT_MESSAGE_DELAY 10
+#define DO_WORK_PERIOD 60000
+#define RECONNECTION_DELAY 60000
+
 //SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 
-//DHT BEGIN
+//https://docs.particle.io/reference/firmware/photon/#ipaddress
+uint8_t server[] = { 192, 168, 178, 22 };
+IPAddress IPfromBytes(server);
+int portNumber = 11000;
+
+//https://docs.particle.io/reference/firmware/photon/#tcpclient
+TCPClient tcpClient; 
+
+MCClient* mcClient;
+char* DeviceName = "Photon"; 
+Message* message = NULL; 
+
+unsigned long lastTime;
+
+//DHT22 BEGIN
 #define DHTPIN 2     // what pin we're connected to
 #define DHTTYPE DHT22		// DHT 22 (AM2302)
 // Connect pin 1 (on the left) of the sensor to +5V
@@ -24,52 +42,36 @@ int internalLed = D7; // Instead of writing D7 over and over again, we'll write 
 // This one is the little blue LED on your board. On the Photon it is next to D7, and on the Core it is next to the USB jack.
 //DHT END
 
-#define WAIT_MESSAGE_DELAY 10
-#define DO_WORK_PERIOD 60000
-#define RECONNECTION_DELAY 60000
-
-//https://docs.particle.io/reference/firmware/photon/#ipaddress
-uint8_t server[] = { 192, 168, 178, 26 };
-IPAddress IPfromBytes(server);
-int portNumber = 11000;
-
-//https://docs.particle.io/reference/firmware/photon/#tcpclient
-char* DeviceName = "Photon"; 
-
-TCPClient tcpClient; 
-MCClient* mcClient;
-Message* message = NULL; 
-
-unsigned long lastTime;
-
 void setup() {
     
-    //DHT BEGIN
+    //DHT22 BEGIN
     pinMode(internalLed, OUTPUT);
-    //DHT END
+    //DHT22 END
     
     //Make sure your Serial Terminal app is closed before powering your device
     Serial.begin(9600);
-    // Now open your Serial Terminal, and hit any key to continue!
-    //while(!Serial.available()) 
-    //  Particle.process();
+    //Now open your Serial Terminal, and hit any key to continue!
+    while(!Serial.available()) 
+      Particle.process();
 
-    WiFi.on(); 
-    WiFi.connect();
-    waitUntil(WiFi.ready);  
+    //If SYSTEM_MODE is MANUAL
+    //WiFi.on(); 
+    //WiFi.connect();
+    //waitUntil(WiFi.ready);  
       
     mcClient = new MCClient(&tcpClient);  
-      
+     
     if (ConnectAndRegister())
     {
-        //DHT BEGIN
+        //DHT22 BEGIN
         dht.begin();
-        //DHT END   
+        //DHT22 END   
         
         lastTime = millis();
     }
 }
 
+//Connect to the Server, register the device and publish/subscribe to commands and data
 bool ConnectAndRegister(){
     if (mcClient->Connect(IPfromBytes, portNumber))
     {
@@ -78,7 +80,8 @@ bool ConnectAndRegister(){
         mcClient->PublishData("*", "Sensor", "Humidity");
         mcClient->PublishData("*", "BoardLED", "LEDStatus");
         mcClient->PublishData("*", "Monitoring", "Reception"); 
-        mcClient->SubscribeToCommand("*", "ToggleLED", "BoardLED");    
+        mcClient->SubscribeToCommand("*", "ToggleLED", "BoardLED");   
+        Serial.println("Registered");
         return true;  
     }
     else
@@ -87,6 +90,7 @@ bool ConnectAndRegister(){
     }
 }
 
+//Listen to incoming messages and perform periodic work 
 void loop() {
     
     //delay(WAIT_MESSAGE_DELAY);
@@ -95,24 +99,25 @@ void loop() {
     int result = mcClient->BufferMessageData(); 
     if (result == MCClient::BUFFER_READY)
     {
-        message = mcClient->Read();
+        Serial.println("Message received");
+        //When a message is available, we process it
+        mcClient->Read();
         if (message != NULL) {
-            HandleReceivedMessage();
+            ProcessReceivedMessage();
             delete message;
             message = NULL;    
         }
     }
 
-    //Periodically, we do some work (unless a message is currently received)
+    //Periodically, we do some work (but if a message is currently received, we process it first)
     if (result == MCClient::BUFFER_NONE && millis() - lastTime > DO_WORK_PERIOD)
     {
-       //Message* heartbeatMessage = Message::InstanciateHeartbeatMessage(DeviceName);
-       //mcClient->Send(heartbeatMessage);
         DoWork(); 
         lastTime = millis();
     }
      
-    /* 
+    //If the client is disconnected, reconnect and register
+    /*
     if (!mcClient->IsConnected())
     {
         Serial.println("disconnected");
@@ -122,8 +127,9 @@ void loop() {
     */
 }
 
-void HandleReceivedMessage() {
-    //Serial.println("handling message");
+//Process received message
+void ProcessReceivedMessage() {
+    Serial.println("Processing message");
     if (mcClient->IsConnected())
     {
         mcClient->SendData("*", "BoardLED", "LEDStatus", "on");
@@ -132,7 +138,7 @@ void HandleReceivedMessage() {
 }
 
 void DoWork() {
-    //Serial.println("do work");
+    Serial.println("do work");
     
     //DHT BEGIN 
     digitalWrite(internalLed, HIGH);
