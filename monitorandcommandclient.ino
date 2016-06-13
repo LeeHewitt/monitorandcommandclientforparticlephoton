@@ -4,7 +4,7 @@
 
 #include "Adafruit_DHT/Adafruit_DHT.h"
 
-#define WAIT_MESSAGE_DELAY 10
+#define WAIT_MESSAGE_DELAY 0
 #define DO_WORK_PERIOD 60000
 #define RECONNECTION_DELAY 60000
 
@@ -38,26 +38,27 @@ DHT dht(DHTPIN, DHTTYPE);
 double temperature = 0.0;
 double humidity = 0.0;
 
-int internalLed = D7; // Instead of writing D7 over and over again, we'll write led2
+int internalLED = D7; // Instead of writing D7 over and over again, we'll write led2
+bool internalLEDIsOn = false;
 // This one is the little blue LED on your board. On the Photon it is next to D7, and on the Core it is next to the USB jack.
 //DHT END
 
 void setup() {
     
     //DHT22 BEGIN
-    pinMode(internalLed, OUTPUT);
+    pinMode(internalLED, OUTPUT);
     //DHT22 END
     
     //Make sure your Serial Terminal app is closed before powering your device
-    Serial.begin(9600);
+    //Serial.begin(9600);
     //Now open your Serial Terminal, and hit any key to continue!
-    while(!Serial.available()) 
-      Particle.process();
+    //while(!Serial.available()) 
+    //  Particle.process();
 
     //If SYSTEM_MODE is MANUAL
-    //WiFi.on(); 
-    //WiFi.connect();
-    //waitUntil(WiFi.ready);  
+    WiFi.on(); 
+    WiFi.connect();
+    waitUntil(WiFi.ready);  
       
     mcClient = new MCClient(&tcpClient);  
      
@@ -73,6 +74,7 @@ void setup() {
 
 //Connect to the Server, register the device and publish/subscribe to commands and data
 bool ConnectAndRegister(){
+    Serial.println("Connect");
     if (mcClient->Connect(IPfromBytes, portNumber))
     {
         mcClient->Register(DeviceName); 
@@ -93,55 +95,52 @@ bool ConnectAndRegister(){
 //Listen to incoming messages and perform periodic work 
 void loop() {
     
-    //delay(WAIT_MESSAGE_DELAY);
-
     //We check for Message data filling the buffer
-    int result = mcClient->BufferMessageData(); 
-    if (result == MCClient::BUFFER_READY)
-    {
-        Serial.println("Message received");
+    int result = mcClient->ProcessTCPBuffer(); 
+    if (result == MCClient::BUFFER_READY) {
         //When a message is available, we process it
-        mcClient->Read();
+        message = mcClient->Receive();
         if (message != NULL) {
             ProcessReceivedMessage();
             delete message;
             message = NULL;    
         }
+    } else if (result == MCClient::BUFFER_NONE){
+        delay(WAIT_MESSAGE_DELAY);    
     }
 
-    //Periodically, we do some work (but if a message is currently received, we process it first)
-    if (result == MCClient::BUFFER_NONE && millis() - lastTime > DO_WORK_PERIOD)
+    //Periodically, we do some work (but if a message is currently received, we loop until it is complete)
+    if (result != MCClient::BUFFER_PARTIAL && millis() - lastTime > DO_WORK_PERIOD)
     {
         DoWork(); 
         lastTime = millis();
     }
      
     //If the client is disconnected, reconnect and register
-    /*
     if (!mcClient->IsConnected())
     {
-        Serial.println("disconnected");
         delay(RECONNECTION_DELAY);
         ConnectAndRegister(); 
     }
-    */
 }
 
 //Process received message
 void ProcessReceivedMessage() {
-    Serial.println("Processing message");
+    Serial.println("Process message");
     if (mcClient->IsConnected())
     {
-        mcClient->SendData("*", "BoardLED", "LEDStatus", "on");
-        //TODO
+        internalLEDIsOn = !internalLEDIsOn;
+        digitalWrite(internalLED, internalLEDIsOn ? HIGH : LOW);
+            
+        mcClient->SendData("*", "BoardLED", "LEDStatus", internalLEDIsOn ? "On" : "Off");
     }
 }
 
 void DoWork() {
-    Serial.println("do work");
+    Serial.println("Do work");
     
     //DHT BEGIN 
-    digitalWrite(internalLed, HIGH);
+    digitalWrite(internalLED, HIGH);
 
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
@@ -152,7 +151,7 @@ void DoWork() {
     temperature = (double)t;
     humidity = (double)h;
 
-    digitalWrite(internalLed, LOW);
+    digitalWrite(internalLED, LOW);
     //DHT END
     
     mcClient->SendData("*", "Sensor", "Temperature", String(temperature,2));

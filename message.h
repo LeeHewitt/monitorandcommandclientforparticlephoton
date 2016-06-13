@@ -7,17 +7,15 @@ class Message
 {
     private : 
         
-        enum ContentTypes { CONTROL = 0, COMMAND = 1, DATA = 2, HEARTBEAT = 3 };
-        
-        void Log(String content);
-        
     protected : 
 
-        static String SERVER ;
-        static String ALL;
-        static String NOT_AVAILABLE;    
-    
     public :
+    
+        enum ContentTypes { CONTROL = 0, COMMAND = 1, DATA = 2, HEARTBEAT = 3 };
+    
+        static String SERVER;
+        static String ALL;
+        static String NOT_AVAILABLE;   
     
         String SendingDevice;
         String ReceivingDevice;
@@ -29,10 +27,8 @@ class Message
         String Content;
         String Timestamp;
 
-        Message(String jsonString);
-        Message(Message &message);
         Message(String sendingDevice, String fromDevice, String toDevice, ContentTypes contentType, String name, String parameter, String content);
-        
+        Message(Message &message);
         ~Message();
         
         static Message* InstanciateRegisterMessage(String sendingDevice);

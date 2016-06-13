@@ -7,6 +7,8 @@ String Message::ALL = "*";
 String Message::NOT_AVAILABLE = "[NA]";  
 
 Message::Message(String sendingDevice, String fromDevice, String toDevice, ContentTypes contentType, String name, String parameter, String content) {
+    Serial.println("Instanciate message");
+    
     SendingDevice = sendingDevice;
     ReceivingDevice = toDevice; //receivingDevice is equal to toDevice unless the server rerouted the message to a device listening for the to/from traffic
     FromDevice = fromDevice;
@@ -20,65 +22,21 @@ Message::Message(String sendingDevice, String fromDevice, String toDevice, Conte
     Timestamp = "1900-01-01T00:00:00.0000000-00:00"; //Default value
 }
 
-Message::Message(String jsonString) {
-    
-    char* jsonChars = (char*)jsonString.c_str(); 
-    
-    char* jsonContent = strtok(jsonChars, "{}"); 
-    Log(jsonContent); 
-    
-    strtok(jsonContent, ",\":");
-    
-    SendingDevice = strtok(NULL, ",\":");
-    Log(SendingDevice);
-    
-    strtok(NULL, ",\":");
-    ReceivingDevice = strtok(NULL, ",\":");//receivingDevice is equal to toDevice unless the server rerouted the message to a device listening for the to/from traffic
-    Log(ReceivingDevice);
-    
-    strtok(NULL, ",\":");
-    FromDevice = strtok(NULL, ",\":");;
-    Log(FromDevice);
-    
-    strtok(NULL, ",\":");
-    ToDevice = strtok(NULL, ",\":");;
-    Log(ToDevice);
-
-    strtok(NULL, ",\":");
-    ContentType = (ContentTypes)atoi(strtok(NULL, ",\":"));
-    
-    strtok(NULL, ",\":");
-    Name = strtok(NULL, ",\":");
-    Log(Name);
-    
-    strtok(NULL, ",\":");
-    Parameter = strtok(NULL, ",\":");
-    Log(Parameter);
-    
-    strtok(NULL, ",\":");
-    Content = strtok(NULL, ",\":");
-    Log(Content);
-
-    strtok(NULL, ",\":");
-    Timestamp = strtok(NULL, ",\":");
-    Log(Timestamp);
-    
-    delete jsonContent; 
-    jsonContent = NULL;
-    
-    delete jsonChars; 
-    jsonChars = NULL; 
-}
-
 Message::Message(Message &message) :
-    Message(message.SendingDevice, message.FromDevice, message.ToDevice, message.ContentType, message.Name, message.Parameter, message.Content) 
-{ 
-
-}
+    Message(message.SendingDevice, message.FromDevice, message.ToDevice, message.ContentType, message.Name, message.Parameter, message.Content) { }
 
 Message::~Message()
 {
+    Serial.println("Destroy message");
     
+    delete SendingDevice;
+    delete ReceivingDevice;
+    delete FromDevice;
+    delete ToDevice;
+    delete Name;
+    delete Parameter;
+    delete Content;
+    delete Timestamp;
 }
 
 Message* Message::InstanciateRegisterMessage(String sendingDevice)
@@ -127,7 +85,6 @@ Message* Message::InstanciateHeartbeatMessage(String ofDevice)
 }
 
 String Message::ToJSONString() {
- 
     String jsonString;
     
     jsonString += "{";  
@@ -145,8 +102,3 @@ String Message::ToJSONString() {
     return jsonString;
 }
 
-void Message::Log(String content) 
-{
-    if (Serial.available()) 
-        Serial.println(content);
-}

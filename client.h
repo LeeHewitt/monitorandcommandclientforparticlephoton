@@ -15,25 +15,37 @@ class MCClient {
     private:
 
         String DeviceName; 
-    
         TCPClient* client = NULL;
-        
         Message* messageToSend = NULL;
-    
+
         byte *buffer;
-        
         size_t bufferOffset; 
-        
-        void Log(String content);
+    
+        static const int sendingDeviceIndex = 1;
+        static const int receivingDeviceIndex = 2;
+        static const int fromDeviceIndex = 3;
+        static const int toDeviceIndex = 4;
+        static const int contentTypeIndex = 5;
+        static const int nameIndex = 6;
+        static const int parameterIndex = 7;
+        static const int contentIndex = 8;
+    
+        String sendingDevice = "";
+        String receivingDevice = "";
+        String fromDevice = "";
+        String toDevice = "";
+        Message::ContentTypes contentType;
+        String name = "";
+        String parameter = "";
+        String content = "";
+    
+        String GetJsonStringFromBytesBuffer();
+        String PadJsonString(String jsonString); 
     
     protected:
-        
-        String PadJsonString(String jsonString); 
 
     public:
 
-        void Send(Message* message);
-    
         static size_t MESSAGE_SIZE;
     
     	static const int BUFFER_READY = 0;
@@ -45,10 +57,8 @@ class MCClient {
         MCClient(TCPClient* tcpClient); 
         
         bool Connect(IPAddress serverIp, int portNumber);
-
-        bool IsConnected(); 
-        
         void Disconnect(); 
+        bool IsConnected(); 
         
         void Register(String deviceName);
         void Unregister(String deviceName);
@@ -60,13 +70,11 @@ class MCClient {
         
         void SendCommand(String toDevice, String commandName, String commandTarget, String commandValue);
         void SendData(String toDevice, String dataSource, String dataName, String dataValue);  
-
-        bool HasMessage();
-        int IsAvailable(); 
         
-        int BufferMessageData(); 
+        int ProcessTCPBuffer(); 
         
-        Message* Read();
+        Message* Receive();
+        void Send(Message* message);
 };
 
 #endif /* __MC_CLIENT_H_ */

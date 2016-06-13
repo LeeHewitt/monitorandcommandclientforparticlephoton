@@ -83,24 +83,8 @@ void MCClient::SendData(String toDevice, String dataSource, String dataName, Str
     delete messageToSend;
 }  
 
-void MCClient::Send(Message *message) {
-    if (IsConnected()) {
-        String jsonString = message->ToJSONString();
-        String paddedJsonString = PadJsonString(jsonString); 
-        client->write(paddedJsonString);
-    }
-}
-
-bool MCClient::HasMessage() {
-    return (client->available() > (int)MCClient::MESSAGE_SIZE); //DOES NOT WORK
-}
-
-int MCClient::IsAvailable() {
-    return client->available(); //DOES NOT WORK
-}
-
 //Taken from https://github.com/rickkas7/fixedlentcprcv/, thanks to rickkas7
-int MCClient::BufferMessageData() {
+int MCClient::ProcessTCPBuffer() {
     
 	if (client == NULL) {
 		return BUFFER_DISCONNECTED;
@@ -116,7 +100,7 @@ int MCClient::BufferMessageData() {
 		bufferOffset += (size_t)count;
 		if (bufferOffset < MCClient::MESSAGE_SIZE) {
 			// Still not a full message
-			Serial.printlnf("Partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
+			//Serial.printlnf("Partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
 			return BUFFER_PARTIAL;
 		}
 
@@ -130,73 +114,142 @@ int MCClient::BufferMessageData() {
 	}
 }
 
-Message* MCClient::Read() {
-    Serial.println("Reading message");
+Message* MCClient::Receive() {
+    Serial.println("Receive");
     
-    Message* message = NULL; 
-
-    /*
-    if (HasMessage()) {
-
-        Log ("Data available");
-
-        //unsigned char* messageChars = new unsigned char[MCClient::MESSAGE_SIZE]; 
-
-        bool appendFlag = false;
-        int charIndex = 0;
+    //Extract Json content
+    String jsonString = GetJsonStringFromBytesBuffer();
+    Serial.println(jsonString);
+    
+    sendingDevice = "";
+    receivingDevice = "";
+    fromDevice = "";
+    toDevice = "";
+    //Message::ContentTypes contentType;
+    name = "";
+    parameter = "";
+    content = "";
+    
+    unsigned int valueTokenIndex = 0;
+    bool insideValueToken = false;
+    unsigned int beginQuoteIndex = 0;
+    unsigned int endQuoteIndex = 0;
+    
+    for (unsigned int index = 0; index < MCClient::MESSAGE_SIZE; index++) {
+        char c = jsonString.charAt(index);
         
-        while(client->available()) {
-            char c = client->read();
-            Serial.print(c);    
+        if (c == ':') {
+            //a value token will start
+            valueTokenIndex++;
+            insideValueToken = true;
+        }
+    
+        if (insideValueToken) {
             
-            if (c == '.') {
-                continue;
-            } else if (c == '{') {
-                messageChars[charIndex++] = c;
-                appendFlag = true;
-            } else if (c == '}') {
-                messageChars[charIndex++] = c;
-                appendFlag = false;   
-            } else {
-                if (appendFlag) {
-                    messageChars[charIndex++] = c;
+            //we detect begin/end quote indexes 
+            if (c == '"' && beginQuoteIndex == 0) {
+                beginQuoteIndex = index;
+            }
+            else if (c == '"' && endQuoteIndex == 0) {
+                endQuoteIndex = index;
+            }
+            
+            if (beginQuoteIndex > 0 && endQuoteIndex > 0)
+            {
+                String substring = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                //Serial.println(substring);
+
+                //we extract the value    
+                switch(valueTokenIndex) {
+                    case sendingDeviceIndex:
+                        sendingDevice = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case receivingDeviceIndex:
+                        receivingDevice = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case fromDeviceIndex:
+                        fromDevice = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case toDeviceIndex:
+                        toDevice = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case contentTypeIndex:
+                        contentType = (Message::ContentTypes)atoi(jsonString.substring(beginQuoteIndex + 1, endQuoteIndex));
+                        break;
+                    case nameIndex:
+                        name = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case parameterIndex:
+                        parameter = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
+                    case contentIndex:
+                        content = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
+                        break;
                 }
+                
+                insideValueToken = false;
+                beginQuoteIndex = 0;
+                endQuoteIndex = 0;
             }
         }
-    */
-    
-    //Fill a string object with the content of the bytes array
-    String paddedJsonString = "";
-    for (int charIndex = 0; charIndex < (int)MCClient::MESSAGE_SIZE; charIndex++)
-    {
-        paddedJsonString = paddedJsonString + (char)buffer[charIndex];     
     }
-    Serial.println(paddedJsonString);
-    
-    //delete messageChars; 
-    //messageChars = NULL; 
 
-    int lastClosingBraceIndex = paddedJsonString.indexOf('}'); 
-    String jsonString = paddedJsonString.substring(0, lastClosingBraceIndex); 
-    Serial.println(jsonString); 
-    
-    message = new Message(jsonString);
-    //}
-    
+    String device = "Photon";
+    Message* message = new Message(sendingDevice, fromDevice, toDevice, contentType, name, parameter, content);
+
+    /*
+    delete sendingDevice;
+    delete receivingDevice;
+    delete fromDevice;
+    delete toDevice;
+    delete name;
+    delete parameter;
+    delete content;
+    */
+
     return message; 
 }
 
+void MCClient::Send(Message *message) {
+    Serial.println("Send");
+    
+    if (IsConnected()) {
+        String paddedJsonString = PadJsonString(message->ToJSONString()); 
+        client->write(paddedJsonString);
+    }
+}
+
+String MCClient::GetJsonStringFromBytesBuffer()
+{
+    //Fill a string object with the content of the bytes array (is there a better way to do that ?)
+    String jsonString = "";
+    bool appendFlag = false;
+    for (int charIndex = 0; charIndex < (int)MCClient::MESSAGE_SIZE; charIndex++) {
+        char c = (char)buffer[charIndex];
+        
+        if (c == '{') {
+            appendFlag = true;
+        }
+        
+        if (appendFlag) {
+            jsonString = jsonString + (char)buffer[charIndex]; 
+        }
+        
+        if (c == '}') {
+            appendFlag = false;
+        }
+    }
+
+    return jsonString;
+}
 
 String MCClient::PadJsonString(String jsonString) {
-
     for (int i = strlen(jsonString); i < (int)MCClient::MESSAGE_SIZE; i++) {
         jsonString += "."; 
     }
     
     return jsonString;
 }
-
-//https://github.com/drcheap/spark-tcptest/blob/master/tcptest.ino
 
 
 
