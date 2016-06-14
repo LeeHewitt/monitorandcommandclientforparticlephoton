@@ -42,7 +42,6 @@ class Message
         static Message* InstanciateHeartbeatMessage(String ofDevice);
 
         String ToJSONString();
-    
 };
 
 #endif /* __MESSAGE_H_ */

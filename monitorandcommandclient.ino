@@ -8,7 +8,6 @@
 #define DO_WORK_PERIOD 60000
 #define RECONNECTION_DELAY 60000
 
-//SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 
 //https://docs.particle.io/reference/firmware/photon/#ipaddress
@@ -25,7 +24,7 @@ Message* message = NULL;
 
 unsigned long lastTime;
 
-//DHT22 BEGIN
+//BEGIN your functionality
 #define DHTPIN 2     // what pin we're connected to
 #define DHTTYPE DHT22		// DHT 22 (AM2302)
 // Connect pin 1 (on the left) of the sensor to +5V
@@ -41,13 +40,13 @@ double humidity = 0.0;
 int internalLED = D7; // Instead of writing D7 over and over again, we'll write led2
 bool internalLEDIsOn = false;
 // This one is the little blue LED on your board. On the Photon it is next to D7, and on the Core it is next to the USB jack.
-//DHT END
+//END
 
 void setup() {
     
-    //DHT22 BEGIN
+    //BEGIN your functionality 
     pinMode(internalLED, OUTPUT);
-    //DHT22 END
+    //END
     
     //Make sure your Serial Terminal app is closed before powering your device
     //Serial.begin(9600);
@@ -62,11 +61,10 @@ void setup() {
       
     mcClient = new MCClient(&tcpClient);  
      
-    if (ConnectAndRegister())
-    {
-        //DHT22 BEGIN
+    if (ConnectAndRegister()) {
+        //BEGIN your functionality 
         dht.begin();
-        //DHT22 END   
+        //END   
         
         lastTime = millis();
     }
@@ -75,71 +73,73 @@ void setup() {
 //Connect to the Server, register the device and publish/subscribe to commands and data
 bool ConnectAndRegister(){
     Serial.println("Connect");
-    if (mcClient->Connect(IPfromBytes, portNumber))
-    {
+    if (mcClient->Connect(IPfromBytes, portNumber)) {
         mcClient->Register(DeviceName); 
+        
+        //BEGIN Your messaging
         mcClient->PublishData("*", "Sensor", "Temperature");
         mcClient->PublishData("*", "Sensor", "Humidity");
         mcClient->PublishData("*", "BoardLED", "LEDStatus");
         mcClient->PublishData("*", "Monitoring", "Reception"); 
         mcClient->SubscribeToCommand("*", "ToggleLED", "BoardLED");   
+        //END 
+        
         Serial.println("Registered");
         return true;  
-    }
-    else
-    {
+    } else {
         return false; 
     }
 }
 
 //Listen to incoming messages and perform periodic work 
 void loop() {
-    
-    //We check for Message data filling the buffer
-    int result = mcClient->ProcessTCPBuffer(); 
-    if (result == MCClient::BUFFER_READY) {
-        //When a message is available, we process it
-        message = mcClient->Receive();
-        if (message != NULL) {
-            ProcessReceivedMessage();
-            delete message;
-            message = NULL;    
+    if (mcClient->IsConnected()) {
+        //We check for Message data filling the buffer
+        int result = mcClient->ProcessTCPBuffer(); 
+        if (result == MCClient::BUFFER_READY) {
+            //When a message is available, we process it
+            message = mcClient->Receive();
+            if (message != NULL) {
+                ProcessReceivedMessage();
+                delete message;
+                message = NULL;    
+            }
+        } else if (result == MCClient::BUFFER_NONE){
+            delay(WAIT_MESSAGE_DELAY);    
         }
-    } else if (result == MCClient::BUFFER_NONE){
-        delay(WAIT_MESSAGE_DELAY);    
+    
+        //Periodically, we do some work (but if a message is currently received, we loop until it is complete)
+        if (result != MCClient::BUFFER_PARTIAL && millis() - lastTime > DO_WORK_PERIOD) {
+            DoWork(); 
+            lastTime = millis();
+        }  
     }
-
-    //Periodically, we do some work (but if a message is currently received, we loop until it is complete)
-    if (result != MCClient::BUFFER_PARTIAL && millis() - lastTime > DO_WORK_PERIOD)
-    {
-        DoWork(); 
-        lastTime = millis();
-    }
-     
-    //If the client is disconnected, reconnect and register
-    if (!mcClient->IsConnected())
-    {
+    else {
+        //If the client is disconnected, reconnect and register
         delay(RECONNECTION_DELAY);
-        ConnectAndRegister(); 
+        ConnectAndRegister();       
     }
 }
 
 //Process received message
 void ProcessReceivedMessage() {
     Serial.println("Process message");
-    if (mcClient->IsConnected())
-    {
+    if (mcClient->IsConnected()) {
+        //BEGIN your functionality
         internalLEDIsOn = !internalLEDIsOn;
         digitalWrite(internalLED, internalLEDIsOn ? HIGH : LOW);
+        //END             
             
+        //BEGIN your messaging
         mcClient->SendData("*", "BoardLED", "LEDStatus", internalLEDIsOn ? "On" : "Off");
+        //END 
     }
 }
 
 void DoWork() {
     Serial.println("Do work");
     
-    //DHT BEGIN 
+    //BEGIN your functionality
     digitalWrite(internalLED, HIGH);
 
     // Reading temperature or humidity takes about 250 milliseconds!
@@ -152,10 +152,12 @@ void DoWork() {
     humidity = (double)h;
 
     digitalWrite(internalLED, LOW);
-    //DHT END
+    //END
     
+    //BEGIN your messaging
     mcClient->SendData("*", "Sensor", "Temperature", String(temperature,2));
     mcClient->SendData("*", "Sensor", "Humidity", String(humidity,2));
+    //END 
 }
 
 //https://docs.particle.io/reference/cli/#particle-serial-monitor

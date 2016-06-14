@@ -25,8 +25,7 @@ Message::Message(String sendingDevice, String fromDevice, String toDevice, Conte
 Message::Message(Message &message) :
     Message(message.SendingDevice, message.FromDevice, message.ToDevice, message.ContentType, message.Name, message.Parameter, message.Content) { }
 
-Message::~Message()
-{
+Message::~Message() {
     Serial.println("Destroy message");
     
     delete SendingDevice;
@@ -39,48 +38,39 @@ Message::~Message()
     delete Timestamp;
 }
 
-Message* Message::InstanciateRegisterMessage(String sendingDevice)
-{
+Message* Message::InstanciateRegisterMessage(String sendingDevice) {
     return new Message(sendingDevice, sendingDevice, SERVER, ContentTypes::CONTROL, "REGISTER", NOT_AVAILABLE, NOT_AVAILABLE);
 }
 
-Message* Message::InstanciateUnregisterMessage(String sendingDevice)
-{
+Message* Message::InstanciateUnregisterMessage(String sendingDevice) {
     return new Message(sendingDevice, NOT_AVAILABLE, SERVER, ContentTypes::CONTROL, "UNREGISTER", NOT_AVAILABLE, NOT_AVAILABLE);
 }
 
-Message* Message::InstanciatePublishMessage(String sendingDevice, String toDevice, String publicationSource, String publicationName)
-{
+Message* Message::InstanciatePublishMessage(String sendingDevice, String toDevice, String publicationSource, String publicationName) {
     return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::CONTROL, "PUBLISH", publicationSource, publicationName);
 }
 
-Message* Message::InstanciateUnpublishMessage(String sendingDevice, String toDevice, String publicationSource, String publicationName)
-{
+Message* Message::InstanciateUnpublishMessage(String sendingDevice, String toDevice, String publicationSource, String publicationName) {
     return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::CONTROL, "UNPUBLISH", publicationSource, publicationName);
 }
 
-Message* Message::InstanciateSubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName)
-{
+Message* Message::InstanciateSubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName) {
     return new Message(sendingDevice, fromDevice, toDevice, ContentTypes::CONTROL, "SUBSCRIBE", publicationSource, publicationName);
 }
 
-Message* Message::InstanciateUnsubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName)
-{
+Message* Message::InstanciateUnsubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName) {
     return new Message(sendingDevice, fromDevice, toDevice, ContentTypes::CONTROL, "UNSUBSCRIBE", publicationSource, publicationName);
 }
 
-Message* Message::InstanciateCommandMessage(String sendingDevice, String toDevice, String commandName, String commandTarget, String commandContent)
-{
+Message* Message::InstanciateCommandMessage(String sendingDevice, String toDevice, String commandName, String commandTarget, String commandContent) {
     return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::COMMAND, commandName, commandTarget, commandContent);
 }
 
-Message* Message::InstanciateDataMessage(String sendingDevice, String toDevice, String dataSource, String dataName, String dataContent)
-{
+Message* Message::InstanciateDataMessage(String sendingDevice, String toDevice, String dataSource, String dataName, String dataContent) {
     return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::DATA, dataSource, dataName, dataContent);
 }
 
-Message* Message::InstanciateHeartbeatMessage(String ofDevice)
-{
+Message* Message::InstanciateHeartbeatMessage(String ofDevice) {
     return new Message(ofDevice, ofDevice, SERVER, ContentTypes::HEARTBEAT, "HEARTBEAT", NOT_AVAILABLE, NOT_AVAILABLE);
 }
 

@@ -11,13 +11,10 @@ MCClient::MCClient(TCPClient* tcpClient) {
 
 bool MCClient::Connect(IPAddress serverIp, int portNumber) {
     
-    if (client->connect(serverIp, portNumber))
-    {
+    if (client->connect(serverIp, portNumber)) {
         Serial.println("Connected");
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
 }
@@ -27,8 +24,7 @@ bool MCClient::IsConnected() {
 }
 
 void MCClient::Disconnect() {
-    if (client->connected())
-    {
+    if (client->connected()) {
         Serial.println("Disconnecting.");
         client->stop();
     }
@@ -107,8 +103,7 @@ int MCClient::ProcessTCPBuffer() {
 		// Got a full message
 		bufferOffset = 0;
 		return BUFFER_READY;
-	}
-	else {
+	} else {
 		client = NULL;
 		return BUFFER_DISCONNECTED;
 	}
@@ -125,7 +120,6 @@ Message* MCClient::Receive() {
     receivingDevice = "";
     fromDevice = "";
     toDevice = "";
-    //Message::ContentTypes contentType;
     name = "";
     parameter = "";
     content = "";
@@ -154,8 +148,7 @@ Message* MCClient::Receive() {
                 endQuoteIndex = index;
             }
             
-            if (beginQuoteIndex > 0 && endQuoteIndex > 0)
-            {
+            if (beginQuoteIndex > 0 && endQuoteIndex > 0) {
                 String substring = jsonString.substring(beginQuoteIndex + 1, endQuoteIndex);
                 //Serial.println(substring);
 
@@ -194,18 +187,7 @@ Message* MCClient::Receive() {
         }
     }
 
-    String device = "Photon";
     Message* message = new Message(sendingDevice, fromDevice, toDevice, contentType, name, parameter, content);
-
-    /*
-    delete sendingDevice;
-    delete receivingDevice;
-    delete fromDevice;
-    delete toDevice;
-    delete name;
-    delete parameter;
-    delete content;
-    */
 
     return message; 
 }
@@ -219,8 +201,7 @@ void MCClient::Send(Message *message) {
     }
 }
 
-String MCClient::GetJsonStringFromBytesBuffer()
-{
+String MCClient::GetJsonStringFromBytesBuffer() {
     //Fill a string object with the content of the bytes array (is there a better way to do that ?)
     String jsonString = "";
     bool appendFlag = false;
