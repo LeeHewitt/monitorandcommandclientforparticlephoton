@@ -1,8 +1,6 @@
 #ifndef __MC_CLIENT_H_
 #define __MC_CLIENT_H_
 
-//https://github.com/elcojacobs/spark-firmware/tree/master/inc
-
 #include "spark_wiring.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_client.h"
@@ -15,7 +13,7 @@ class MCClient {
     private:
 
         String DeviceName; 
-        TCPClient* client = NULL;
+        TCPClient* tcpClient = NULL;
         Message* messageToSend = NULL;
 
         byte *buffer;

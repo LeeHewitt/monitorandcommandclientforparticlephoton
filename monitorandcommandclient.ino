@@ -2,16 +2,18 @@
 #include "message.h"
 #include "client.h"
 
+//BEGIN DEMO CODE
 #include "Adafruit_DHT/Adafruit_DHT.h"
+//END
 
-#define WAIT_MESSAGE_DELAY 0
+#define WAIT_MESSAGE_DELAY 50
 #define DO_WORK_PERIOD 60000
 #define RECONNECTION_DELAY 60000
 
 SYSTEM_THREAD(ENABLED);
 
 //https://docs.particle.io/reference/firmware/photon/#ipaddress
-uint8_t server[] = { 192, 168, 178, 22 };
+uint8_t server[] = { 192, 168, 178, 26 };
 IPAddress IPfromBytes(server);
 int portNumber = 11000;
 
@@ -19,12 +21,12 @@ int portNumber = 11000;
 TCPClient tcpClient; 
 
 MCClient* mcClient;
-char* DeviceName = "Photon"; 
+char* DeviceName = "Photon A"; 
 Message* message = NULL; 
 
 unsigned long lastTime;
 
-//BEGIN your functionality
+//BEGIN DEMO CODE
 #define DHTPIN 2     // what pin we're connected to
 #define DHTTYPE DHT22		// DHT 22 (AM2302)
 // Connect pin 1 (on the left) of the sensor to +5V
@@ -37,15 +39,21 @@ DHT dht(DHTPIN, DHTTYPE);
 double temperature = 0.0;
 double humidity = 0.0;
 
-int internalLED = D7; // Instead of writing D7 over and over again, we'll write led2
-bool internalLEDIsOn = false;
+int externalGreenLED = D4;
+bool externalGreenLEDIsOn = false;
+int externalRedLED = D6;
+bool externalRedLEDIsOn = false;
+int boardLED = D7;
+bool boardLEDIsOn = false;
 // This one is the little blue LED on your board. On the Photon it is next to D7, and on the Core it is next to the USB jack.
 //END
 
 void setup() {
     
-    //BEGIN your functionality 
-    pinMode(internalLED, OUTPUT);
+    //BEGIN DEMO CODE
+    pinMode(boardLED, OUTPUT);
+    pinMode(externalRedLED, OUTPUT);
+    pinMode(externalGreenLED, OUTPUT);
     //END
     
     //Make sure your Serial Terminal app is closed before powering your device
@@ -62,7 +70,7 @@ void setup() {
     mcClient = new MCClient(&tcpClient);  
      
     if (ConnectAndRegister()) {
-        //BEGIN your functionality 
+        //BEGIN DEMO CODE 
         dht.begin();
         //END   
         
@@ -76,12 +84,15 @@ bool ConnectAndRegister(){
     if (mcClient->Connect(IPfromBytes, portNumber)) {
         mcClient->Register(DeviceName); 
         
-        //BEGIN Your messaging
+        //BEGIN DEMO CODE
         mcClient->PublishData("*", "Sensor", "Temperature");
         mcClient->PublishData("*", "Sensor", "Humidity");
+        
         mcClient->PublishData("*", "BoardLED", "LEDStatus");
-        mcClient->PublishData("*", "Monitoring", "Reception"); 
-        mcClient->SubscribeToCommand("*", "ToggleLED", "BoardLED");   
+        mcClient->PublishData("*", "RedLED", "LEDStatus");
+        mcClient->SubscribeToCommand("*", "ToggleLED", "RedLED");   
+        mcClient->PublishData("*", "GreenLED", "LEDStatus");
+        mcClient->SubscribeToCommand("*", "ToggleLED", "GreenLED");   
         //END 
         
         Serial.println("Registered");
@@ -108,8 +119,8 @@ void loop() {
             delay(WAIT_MESSAGE_DELAY);    
         }
     
-        //Periodically, we do some work (but if a message is currently received, we loop until it is complete)
-        if (result != MCClient::BUFFER_PARTIAL && millis() - lastTime > DO_WORK_PERIOD) {
+        //Periodically, we do some work (but if a message is currently received, we loop until we go it all)
+        if ((result != MCClient::BUFFER_PARTIAL) && (millis() - lastTime > DO_WORK_PERIOD)) {
             DoWork(); 
             lastTime = millis();
         }  
@@ -125,22 +136,32 @@ void loop() {
 void ProcessReceivedMessage() {
     Serial.println("Process message");
     if (mcClient->IsConnected()) {
-        //BEGIN your functionality
-        internalLEDIsOn = !internalLEDIsOn;
-        digitalWrite(internalLED, internalLEDIsOn ? HIGH : LOW);
-        //END             
-            
-        //BEGIN your messaging
-        mcClient->SendData("*", "BoardLED", "LEDStatus", internalLEDIsOn ? "On" : "Off");
-        //END 
+        //BEGIN DEMO CODE
+        if (message->Parameter == "ToggleLED") {
+            if (message->Name == "GreenLED") {
+                //BEGIN your functionality
+                externalGreenLEDIsOn = !externalGreenLEDIsOn;
+                digitalWrite(externalGreenLED, externalGreenLEDIsOn ? HIGH : LOW);
+                mcClient->SendData("*", "GreenLED", "LEDStatus", externalGreenLEDIsOn ? "On" : "Off");
+                //END      
+            } else if (message->Name == "RedLED") {
+                //BEGIN your functionality
+                externalRedLEDIsOn = !externalRedLEDIsOn;
+                digitalWrite(externalRedLED, externalRedLEDIsOn ? HIGH : LOW);
+                mcClient->SendData("*", "RedLED", "LEDStatus", externalRedLEDIsOn ? "On" : "Off");
+                    
+            }
+        }
+        //END
     }
 }
 
 void DoWork() {
     Serial.println("Do work");
     
-    //BEGIN your functionality
-    digitalWrite(internalLED, HIGH);
+    //BEGIN DEMO CODE
+    digitalWrite(boardLED, HIGH);
+    mcClient->SendData("*", "BoardLED", "LEDStatus", "On");
 
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
@@ -151,13 +172,12 @@ void DoWork() {
     temperature = (double)t;
     humidity = (double)h;
 
-    digitalWrite(internalLED, LOW);
+    mcClient->SendData("*", "Sensor", "Temperature", String(temperature,1));
+    mcClient->SendData("*", "Sensor", "Humidity", String(humidity,1));
+
+    digitalWrite(boardLED, LOW);
+    mcClient->SendData("*", "BoardLED", "LEDStatus", "Off");
     //END
-    
-    //BEGIN your messaging
-    mcClient->SendData("*", "Sensor", "Temperature", String(temperature,2));
-    mcClient->SendData("*", "Sensor", "Humidity", String(humidity,2));
-    //END 
 }
 
 //https://docs.particle.io/reference/cli/#particle-serial-monitor

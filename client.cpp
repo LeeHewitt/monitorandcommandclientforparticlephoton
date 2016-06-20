@@ -4,14 +4,14 @@
 size_t MCClient::MESSAGE_SIZE = 512;
 
 MCClient::MCClient(TCPClient* tcpClient) {
-    this->client = tcpClient;    
+    this->tcpClient = tcpClient;    
     buffer = (byte*)malloc(MCClient::MESSAGE_SIZE);
     bufferOffset = 0;
 }
 
 bool MCClient::Connect(IPAddress serverIp, int portNumber) {
     
-    if (client->connect(serverIp, portNumber)) {
+    if (tcpClient->connect(serverIp, portNumber)) {
         Serial.println("Connected");
         return true;
     } else {
@@ -20,13 +20,13 @@ bool MCClient::Connect(IPAddress serverIp, int portNumber) {
 }
 
 bool MCClient::IsConnected() {
-    return client->connected(); 
+    return tcpClient->connected(); 
 }
 
 void MCClient::Disconnect() {
-    if (client->connected()) {
+    if (tcpClient->connected()) {
         Serial.println("Disconnecting.");
-        client->stop();
+        tcpClient->stop();
     }
 }
 
@@ -79,15 +79,11 @@ void MCClient::SendData(String toDevice, String dataSource, String dataName, Str
     delete messageToSend;
 }  
 
-//Taken from https://github.com/rickkas7/fixedlentcprcv/, thanks to rickkas7
+//Taken from https://github.com/rickkas7/fixedlentcprcv/, thanks to Particle community member rickkas7
 int MCClient::ProcessTCPBuffer() {
     
-	if (client == NULL) {
-		return BUFFER_DISCONNECTED;
-	}
-
-	if (client->connected()) {
-		int count = client->read(&buffer[bufferOffset], MCClient::MESSAGE_SIZE - bufferOffset);
+	if (tcpClient->connected()) {
+		int count = tcpClient->read(&buffer[bufferOffset], MCClient::MESSAGE_SIZE - bufferOffset);
 		if (count <= 0) {
 			return (bufferOffset == 0) ? BUFFER_NONE : BUFFER_PARTIAL;
 		}
@@ -95,18 +91,15 @@ int MCClient::ProcessTCPBuffer() {
 		// New data arrived
 		bufferOffset += (size_t)count;
 		if (bufferOffset < MCClient::MESSAGE_SIZE) {
-			// Still not a full message
-			//Serial.printlnf("Partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
+			//Still not a full message
+		    //Serial.printlnf("Partial offset=%d size=%d", bufferOffset, MCClient::MESSAGE_SIZE);
 			return BUFFER_PARTIAL;
 		}
 
 		// Got a full message
 		bufferOffset = 0;
 		return BUFFER_READY;
-	} else {
-		client = NULL;
-		return BUFFER_DISCONNECTED;
-	}
+	} 
 }
 
 Message* MCClient::Receive() {
@@ -197,7 +190,7 @@ void MCClient::Send(Message *message) {
     
     if (IsConnected()) {
         String paddedJsonString = PadJsonString(message->ToJSONString()); 
-        client->write(paddedJsonString);
+        tcpClient->write(paddedJsonString);
     }
 }
 
