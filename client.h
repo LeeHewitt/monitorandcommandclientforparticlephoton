@@ -64,9 +64,9 @@ class MCClient {
         void PublishCommand(String toDevice, String commandTarget, String commandName);
         void PublishData(String toDevice, String dataSource, String dataName);
         void SubscribeToData(String fromDevice, String dataSource, String dataName);
-        void SubscribeToCommand(String fromDevice, String commandName, String commandTarget);
+        void SubscribeToCommand(String fromDevice, String commandTarget, String commandName);
         
-        void SendCommand(String toDevice, String commandName, String commandTarget, String commandValue);
+        void SendCommand(String toDevice, String commandTarget, String commandName, String commandValue);
         void SendData(String toDevice, String dataSource, String dataName, String dataValue);  
         
         int ProcessTCPBuffer(); 

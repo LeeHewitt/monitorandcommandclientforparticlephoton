@@ -62,8 +62,8 @@ Message* Message::InstanciateUnsubscribeMessage(String sendingDevice, String fro
     return new Message(sendingDevice, fromDevice, toDevice, ContentTypes::CONTROL, "UNSUBSCRIBE", publicationSource, publicationName);
 }
 
-Message* Message::InstanciateCommandMessage(String sendingDevice, String toDevice, String commandName, String commandTarget, String commandContent) {
-    return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::COMMAND, commandName, commandTarget, commandContent);
+Message* Message::InstanciateCommandMessage(String sendingDevice, String toDevice, String commandTarget, String commandName, String commandContent) {
+    return new Message(sendingDevice, sendingDevice, toDevice, ContentTypes::COMMAND, commandTarget, commandName, commandContent);
 }
 
 Message* Message::InstanciateDataMessage(String sendingDevice, String toDevice, String dataSource, String dataName, String dataContent) {

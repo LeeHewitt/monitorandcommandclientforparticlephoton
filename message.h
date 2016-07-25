@@ -37,7 +37,7 @@
             static Message* InstanciateUnpublishMessage(String sendingDevice, String toDevice, String publicationSource, String publicationName);
             static Message* InstanciateSubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName);
             static Message* InstanciateUnsubscribeMessage(String sendingDevice, String fromDevice, String toDevice, String publicationSource, String publicationName);
-            static Message* InstanciateCommandMessage(String sendingDevice, String toDevice, String commandName, String commandTarget, String commandContent);
+            static Message* InstanciateCommandMessage(String sendingDevice, String toDevice, String commandTarget, String commandName, String commandContent);
             static Message* InstanciateDataMessage(String sendingDevice, String toDevice, String dataSource, String dataName, String dataContent);
             static Message* InstanciateHeartbeatMessage(String ofDevice);
     

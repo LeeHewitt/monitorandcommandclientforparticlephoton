@@ -61,14 +61,14 @@ void MCClient::SubscribeToData(String fromDevice, String dataSource, String data
     delete messageToSend;
 }
 
-void MCClient::SubscribeToCommand(String fromDevice, String commandName, String commandTarget) {
-    messageToSend = Message::InstanciateSubscribeMessage(DeviceName, fromDevice, DeviceName, commandName, commandTarget);
+void MCClient::SubscribeToCommand(String fromDevice, String commandTarget, String commandName) {
+    messageToSend = Message::InstanciateSubscribeMessage(DeviceName, fromDevice, DeviceName, commandTarget, commandName);
     Send(messageToSend);
     delete messageToSend;
 }
 
-void MCClient::SendCommand(String toDevice, String commandName, String commandTarget, String commandValue) {
-    messageToSend = Message::InstanciateCommandMessage(DeviceName, toDevice, commandName, commandTarget, commandValue);
+void MCClient::SendCommand(String toDevice, String commandTarget, String commandName, String commandValue) {
+    messageToSend = Message::InstanciateCommandMessage(DeviceName, toDevice, commandTarget, commandName, commandValue);
     Send(messageToSend);
     delete messageToSend;
 }
